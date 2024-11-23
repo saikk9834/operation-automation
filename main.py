@@ -9,6 +9,7 @@ from datetime import datetime
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 
 def select_all_in_one_folder():
     folder_selected = filedialog.askdirectory()
@@ -25,6 +26,59 @@ def zip_folder(folder_path, zip_path):
                 zipf.write(os.path.join(root, file),
                            os.path.relpath(os.path.join(root, file),
                                            os.path.join(folder_path, '..')))
+             
+def upload_to_drive(file_path, folder_id):
+    try:
+        # Define the required scopes
+        SCOPES = ['https://www.googleapis.com/auth/drive.file']
+        
+        # Path to your service account credentials file
+        SERVICE_ACCOUNT_FILE = 'credentials.json'
+        
+        # Create credentials
+        credentials = service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+        
+        # Build the Drive API service
+        service = build('drive', 'v3', credentials=credentials)
+        
+        # Define file metadata
+        file_metadata = {
+            'name': os.path.basename(file_path),
+            'parents': [folder_id]  # Specify the folder ID where the file should be uploaded
+        }
+        
+        # Create media file upload object
+        media = MediaFileUpload(
+            file_path,
+            mimetype='application/zip',
+            resumable=True  # Enable resumable uploads for larger files
+        )
+        
+        # Upload the file
+        print(f"Starting upload of {file_path} to Google Drive...")
+        file = service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id,name,webViewLink'  # Request additional fields
+        ).execute()
+        
+        print(f"Upload successful!")
+        print(f"File Name: {file.get('name')}")
+        print(f"File ID: {file.get('id')}")
+        print(f"Web View Link: {file.get('webViewLink')}")
+        
+        return file.get('id')
+    except FileNotFoundError as e:
+        print(f"Error: File not found - {str(e)}")
+        raise
+    except HttpError as e:
+        print(f"Error: Google Drive API error - {str(e)}")
+        raise
+    except Exception as e:
+        print(f"Error: Unexpected error occurred - {str(e)}")
+        raise
+
 
 def run_script():
     all_in_one = all_in_one_path.get()
@@ -99,7 +153,13 @@ def run_script():
     zip_filepath = os.path.join(destination, zip_filename)
     zip_folder(destination, zip_filepath)
 
-    messagebox.showinfo("Success", "Process completed")
+    # Upload the zip file to Google Drive
+    try:
+        folder_id = '1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn'
+        file_id = upload_to_drive(zip_filepath, folder_id)
+        messagebox.showinfo("Success", "Process completed and file uploaded to Google Drive")
+    except Exception as e:
+        messagebox.showerror("Error", f"Upload failed: {str(e)}")
 
 root = tk.Tk()
 root.title("Operation Automation")
