@@ -10,6 +10,12 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def select_all_in_one_folder():
     folder_selected = filedialog.askdirectory()
@@ -62,13 +68,22 @@ def upload_to_drive(file_path, folder_id):
             media_body=media,
             fields='id,name,webViewLink'  # Request additional fields
         ).execute()
+
+        permission = {
+            'type': 'anyone',
+            'role': 'reader'
+        }
+        service.permissions().create(
+            fileId=file.get('id'),
+            body=permission
+        ).execute()
         
         print(f"Upload successful!")
         print(f"File Name: {file.get('name')}")
         print(f"File ID: {file.get('id')}")
         print(f"Web View Link: {file.get('webViewLink')}")
         
-        return file.get('id')
+        return file.get('webViewLink')
     except FileNotFoundError as e:
         print(f"Error: File not found - {str(e)}")
         raise
@@ -78,6 +93,29 @@ def upload_to_drive(file_path, folder_id):
     except Exception as e:
         print(f"Error: Unexpected error occurred - {str(e)}")
         raise
+
+def send_email(shared_link, recipient_email):
+    sender_email = os.getenv('SENDER_EMAIL')
+    sender_password = os.getenv('SENDER_PASSWORD')
+    
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = recipient_email
+    msg['Subject'] = "Shared Google Drive Link"
+    
+    body = f"Here is the shared link to the uploaded file: {shared_link}"
+    msg.attach(MIMEText(body, 'plain'))
+    
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        text = msg.as_string()
+        server.sendmail(sender_email, recipient_email, text)
+        server.quit()
+        print("Email sent successfully")
+    except Exception as e:
+        print(f"Error: Unable to send email - {str(e)}")
 
 
 def run_script():
@@ -96,18 +134,16 @@ def run_script():
         messagebox.showerror("Error", "Destination folder path does not exist")
         return
 
-    # Run the script to get SKUs of unfulfilled orders
     orders = script.get_data('Order')
     unfulfilled_skus = []
     not_found = []
     for order in orders:
         if order.fulfillment_status is None:
             for line_item in order.line_items:
-                if line_item.sku:  # Ensure SKU is not None
+                if line_item.sku:
                     unfulfilled_skus.append((order.id, line_item.sku, line_item.quantity))
 
     for order_id, sku, quantity in unfulfilled_skus:
-        # Determine file category and find the source image
         if sku is None:
             continue
 
@@ -127,12 +163,10 @@ def run_script():
             filename = sku[:-2]
             target_folder = os.path.join(destination, "PP")
         else:
-            continue  # Skip non-poster and non-sticker SKUs
+            continue
 
-        # Ensure the target folder exists
         os.makedirs(target_folder, exist_ok=True)
 
-        # Copy the file to the target folder based on quantity
         sku_file = os.path.join(all_in_one, f"{filename}.jpg")
         if os.path.exists(sku_file):
             for i in range(quantity):
@@ -140,23 +174,22 @@ def run_script():
         else:
             not_found.append((order_id, sku, quantity))
 
-    # Record not found SKUs in a .csv file
     with open(os.path.join(destination, 'not_found.csv'), mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Order ID", "SKU", "Quantity"])
         for order_id, sku, quantity in not_found:
             writer.writerow([order_id, sku, quantity])
 
-    # Zip the destination folder
     date_str = datetime.now().strftime("%d%m%Y")
     zip_filename = f"{date_str}onlineorder.zip"
     zip_filepath = os.path.join(destination, zip_filename)
     zip_folder(destination, zip_filepath)
 
-    # Upload the zip file to Google Drive
     try:
         folder_id = '1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn'
-        file_id = upload_to_drive(zip_filepath, folder_id)
+        shared_link = upload_to_drive(zip_filepath, folder_id)
+        recipient_email = "recipient@gmail.com"
+        send_email(shared_link, recipient_email) #send the email to manufacturer's email id
         messagebox.showinfo("Success", "Process completed and file uploaded to Google Drive")
     except Exception as e:
         messagebox.showerror("Error", f"Upload failed: {str(e)}")
