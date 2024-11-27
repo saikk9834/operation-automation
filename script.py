@@ -4,9 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-token = os.getenv('TOKEN')
-merchant = os.getenv('MERCHANT')
-api_version = '2023-01'
+token = os.getenv("TOKEN")
+merchant = os.getenv("MERCHANT")
+api_version = "2023-01"
 
 if not token or not merchant:
     raise ValueError("TOKEN and MERCHANT environment variables must be set")
@@ -14,6 +14,7 @@ if not token or not merchant:
 merchant_url = "posterwaofficial.myshopify.com"
 api_session = shopify.Session(merchant_url, api_version, token)
 shopify.ShopifyResource.activate_session(api_session)
+
 
 def get_data(object_name):
     all_data = []
