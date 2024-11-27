@@ -30,12 +30,12 @@ def select_destination_folder():
 
 def zip_folder(folder_path, zip_path):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk(folder_path):
+        for root_dir, _, files in os.walk(folder_path):
             for file in files:
                 zipf.write(
-                    os.path.join(root, file),
+                    os.path.join(root_dir, file),
                     os.path.relpath(
-                        os.path.join(root, file), os.path.join(folder_path, "..")
+                        os.path.join(root_dir, file), os.path.join(folder_path, "..")
                     ),
                 )
 
@@ -86,7 +86,7 @@ def upload_to_drive(file_path, folder_id):
         permission = {"type": "anyone", "role": "reader"}
         service.permissions().create(fileId=file.get("id"), body=permission).execute()
 
-        print(f"Upload successful!")
+        print("Upload successful!")
         print(f"File Name: {file.get('name')}")
         print(f"File ID: {file.get('id')}")
         print(f"Web View Link: {file.get('webViewLink')}")
@@ -123,7 +123,7 @@ def send_email(shared_link, recipient_email):
         server.sendmail(sender_email, recipient_email, text)
         server.quit()
         print("Email sent successfully")
-    except Exception as e:
+    except smtplib.SMTPException as e:
         print(f"Error: Unable to send email - {str(e)}")
 
 
@@ -187,7 +187,7 @@ def run_script():
         else:
             not_found.append((order_id, sku, quantity))
 
-    with open(os.path.join(destination, "not_found.csv"), mode="w", newline="") as file:
+    with open(os.path.join(destination, "not_found.csv"), mode="w", newline="", encoding="utf-8") as file:
         writer = csv.writer(file)
         writer.writerow(["Order ID", "SKU", "Quantity"])
         for order_id, sku, quantity in not_found:

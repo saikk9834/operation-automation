@@ -21,7 +21,7 @@ def get_data(object_name):
     attribute = getattr(shopify, object_name)
     try:
         data = attribute.find(since_id=0, limit=250)
-    except Exception as e:
+    except shopify.ShopifyError as e:
         print(f"Error fetching data for {object_name}: {e}")
         return all_data
 
