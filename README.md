@@ -1,3 +1,5 @@
+[![Python application test with Github Actions](https://github.com/perceptronq/operation-automation/actions/workflows/actions.yml/badge.svg)](https://github.com/perceptronq/operation-automation/actions/workflows/actions.yml)
+
 Setting up google drive api and service account
 
  a. Go to https://console.cloud.google.com/ <br>
