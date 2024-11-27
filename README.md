@@ -15,8 +15,10 @@ Setting up google drive api and service account
 
 create a .env file which must contain 2 parameters:
 ```
-TOKEN= 'shopify-app-api'
-MERCHANT= 'merchant-name'
+TOKEN='shopify-app-api'
+MERCHANT='merchant-name'
+SENDER_EMAIL='sender-email-address'
+SENDER_PASSWORD='sender-email-password'
 ```
 
 
