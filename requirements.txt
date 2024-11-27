@@ -26,3 +26,6 @@ ShopifyAPI==12.7.0
 six==1.16.0
 uritemplate==4.1.1
 urllib3==2.2.3
+pytest==8.3.3
+pytest-cov==6.0.0
+pylint==3.3.1
