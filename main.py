@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
+import sys
 import os
 import shutil
 import csv
@@ -15,15 +16,27 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
 
-load_dotenv()
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores the path in sys._MEIPASS
+        base_path = sys._MEIPASS  # pylint: disable=no-member
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+load_dotenv(dotenv_path=resource_path(".env"))
 
 def select_all_in_one_folder():
     folder_selected = filedialog.askdirectory()
     all_in_one_path.set(folder_selected)
 
+
 def select_destination_folder():
     folder_selected = filedialog.askdirectory()
     destination_path.set(folder_selected)
+
 
 def zip_folder(folder_path, zip_path):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -36,6 +49,7 @@ def zip_folder(folder_path, zip_path):
                     ),
                 )
 
+
 def remove_empty_folders(path):
     for root_dir, dirs, files in os.walk(path, topdown=False):
         for dir_name in dirs:
@@ -43,10 +57,11 @@ def remove_empty_folders(path):
             if not os.listdir(dir_path):
                 os.rmdir(dir_path)
 
+
 def upload_to_drive(file_path, folder_id):
     try:
         SCOPES = ["https://www.googleapis.com/auth/drive.file"]
-        SERVICE_ACCOUNT_FILE = "credentials.json"
+        SERVICE_ACCOUNT_FILE = resource_path("credentials.json")
         credentials = service_account.Credentials.from_service_account_file(
             SERVICE_ACCOUNT_FILE, scopes=SCOPES
         )
@@ -89,6 +104,7 @@ def upload_to_drive(file_path, folder_id):
         print(f"Error: Unexpected error occurred - {str(e)}")
         raise
 
+
 def send_email(shared_link, recipient_email):
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD")
@@ -108,6 +124,7 @@ def send_email(shared_link, recipient_email):
         print("Email sent successfully")
     except smtplib.SMTPException as e:
         print(f"Error: Unable to send email - {str(e)}")
+
 
 def run_script():
     all_in_one = all_in_one_path.get()
@@ -196,6 +213,7 @@ def run_script():
         )
     except Exception as e:
         messagebox.showerror("Error", f"Upload failed: {str(e)}")
+
 
 root = tk.Tk()
 root.title("Operation Automation")
