@@ -17,16 +17,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
 def select_all_in_one_folder():
     folder_selected = filedialog.askdirectory()
     all_in_one_path.set(folder_selected)
 
-
 def select_destination_folder():
     folder_selected = filedialog.askdirectory()
     destination_path.set(folder_selected)
-
 
 def zip_folder(folder_path, zip_path):
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
@@ -92,7 +89,6 @@ def upload_to_drive(file_path, folder_id):
         print(f"Error: Unexpected error occurred - {str(e)}")
         raise
 
-
 def send_email(shared_link, recipient_email):
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD")
@@ -112,7 +108,6 @@ def send_email(shared_link, recipient_email):
         print("Email sent successfully")
     except smtplib.SMTPException as e:
         print(f"Error: Unable to send email - {str(e)}")
-
 
 def run_script():
     all_in_one = all_in_one_path.get()
@@ -157,17 +152,22 @@ def run_script():
         else:
             continue
         os.makedirs(target_folder, exist_ok=True)
-        # Create subfolder based on quantity
         subfolder_name = f"{quantity} copy"
         subfolder_path = os.path.join(target_folder, subfolder_name)
         os.makedirs(subfolder_path, exist_ok=True)
-        # Check for files with .jpg, .jpeg, and .png extensions
+        # Recursively search for the file in all_in_one and subfolders
         file_found = False
         for ext in [".jpg", ".jpeg", ".png"]:
-            sku_file = os.path.join(all_in_one, f"{filename}{ext}")
-            if os.path.exists(sku_file):
-                shutil.copy(sku_file, subfolder_path)
-                file_found = True
+            for root_dir, _, files in os.walk(all_in_one):
+                for file in files:
+                    if file == f"{filename}{ext}":
+                        sku_file = os.path.join(root_dir, file)
+                        shutil.copy(sku_file, subfolder_path)
+                        file_found = True
+                        break
+                if file_found:
+                    break
+            if file_found:
                 break
         if not file_found:
             not_found.append((order_id, sku, quantity))
@@ -181,7 +181,6 @@ def run_script():
         writer.writerow(["Order ID", "SKU", "Quantity"])
         for order_id, sku, quantity in not_found:
             writer.writerow([order_id, sku, quantity])
-    
     remove_empty_folders(destination)
     date_str = datetime.now().strftime("%d%m%Y")
     zip_filename = f"{date_str}onlineorder.zip"
@@ -197,7 +196,6 @@ def run_script():
         )
     except Exception as e:
         messagebox.showerror("Error", f"Upload failed: {str(e)}")
-
 
 root = tk.Tk()
 root.title("Operation Automation")
