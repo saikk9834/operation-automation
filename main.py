@@ -206,7 +206,7 @@ def run_script():
     try:
         folder_id = "1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn"
         shared_link = upload_to_drive(zip_filepath, folder_id)
-        recipient_email = "mayankch283@example.com"
+        recipient_email = "mayankch283@gmail.com"
         send_email(shared_link, recipient_email)
         messagebox.showinfo(
             "Success", "Process completed and file uploaded to Google Drive"
