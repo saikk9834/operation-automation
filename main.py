@@ -74,7 +74,7 @@ def upload_to_drive(file_path, folder_id):
         # Upload the file
         print(f"Starting upload of {file_path} to Google Drive...")
         file = (
-            service.files()
+            service.files()  # pylint: disable=no-member
             .create(
                 body=file_metadata,
                 media_body=media,
@@ -84,7 +84,7 @@ def upload_to_drive(file_path, folder_id):
         )
 
         permission = {"type": "anyone", "role": "reader"}
-        service.permissions().create(fileId=file.get("id"), body=permission).execute()
+        service.permissions().create(fileId=file.get("id"), body=permission).execute()  # pylint: disable=no-member
 
         print("Upload successful!")
         print(f"File Name: {file.get('name')}")
@@ -178,16 +178,27 @@ def run_script():
 
         os.makedirs(target_folder, exist_ok=True)
 
-        sku_file = os.path.join(all_in_one, f"{filename}.jpg")
-        if os.path.exists(sku_file):
-            for i in range(quantity):
-                shutil.copy(
-                    sku_file, os.path.join(target_folder, f"{filename}_{i+1} copy.jpg")
-                )
-        else:
+        # Check for files with .jpg, .jpeg, and .png extensions
+        file_found = False
+        for ext in ['.jpg', '.jpeg', '.png']:
+            sku_file = os.path.join(all_in_one, f"{filename}{ext}")
+            if os.path.exists(sku_file):
+                for i in range(quantity):
+                    shutil.copy(
+                        sku_file, os.path.join(target_folder, f"{filename}_{i+1}{ext}")
+                    )
+                file_found = True
+                break
+
+        if not file_found:
             not_found.append((order_id, sku, quantity))
 
-    with open(os.path.join(destination, "not_found.csv"), mode="w", newline="", encoding="utf-8") as file:
+    with open(
+        os.path.join(destination, "not_found.csv"),
+        mode="w",
+        newline="",
+        encoding="utf-8",
+    ) as file:
         writer = csv.writer(file)
         writer.writerow(["Order ID", "SKU", "Quantity"])
         for order_id, sku, quantity in not_found:
@@ -201,7 +212,7 @@ def run_script():
     try:
         folder_id = "1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn"
         shared_link = upload_to_drive(zip_filepath, folder_id)
-        recipient_email = "recipient@gmail.com"
+        recipient_email = "mayankch283@gmail.com"
         send_email(
             shared_link, recipient_email
         )  # send the email to manufacturer's email id
