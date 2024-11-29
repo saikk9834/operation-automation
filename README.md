@@ -44,3 +44,16 @@ pip install -r requirements.txt
 python main.py
  
 ```
+Generate a spec file
+`pyinstaller main.py --name Automate --onefile --windowed --specpath .`
+
+Add this to Automate.spec
+```
+datas=[
+        ('credentials.json', '.'),
+        ('.env', '.'),
+    ],
+```
+
+Build executable
+`pyinstaller main.py --name Automate --onefile --windowed --add-data "credentials.json:." --add-data ".env:."`
