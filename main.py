@@ -39,6 +39,12 @@ def zip_folder(folder_path, zip_path):
                     ),
                 )
 
+def remove_empty_folders(path):
+    for root_dir, dirs, files in os.walk(path, topdown=False):
+        for dir_name in dirs:
+            dir_path = os.path.join(root_dir, dir_name)
+            if not os.listdir(dir_path):
+                os.rmdir(dir_path)
 
 def upload_to_drive(file_path, folder_id):
     try:
@@ -175,6 +181,8 @@ def run_script():
         writer.writerow(["Order ID", "SKU", "Quantity"])
         for order_id, sku, quantity in not_found:
             writer.writerow([order_id, sku, quantity])
+    
+    remove_empty_folders(destination)
     date_str = datetime.now().strftime("%d%m%Y")
     zip_filename = f"{date_str}onlineorder.zip"
     zip_filepath = os.path.join(destination, zip_filename)
