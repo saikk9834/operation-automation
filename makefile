@@ -6,7 +6,7 @@ format:
 	black *.py
 
 lint:
-	pylint --disable=R,C,W0718,E1101 *.py
+	pylint --disable=R,C,W0718,E1101,W0612 *.py
 
 test:
 	#test
