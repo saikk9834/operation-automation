@@ -129,6 +129,11 @@ def send_email(shared_link, recipient_email):
 def run_script():
     all_in_one = all_in_one_path.get()
     destination = destination_path.get()
+    recipient_email = recipient_email_var.get()
+
+    if not all_in_one or not destination or not recipient_email:
+        messagebox.showerror("Error", "All paths and recipient email must be set")
+        return
     if not all_in_one or not destination:
         messagebox.showerror("Error", "Both paths must be set")
         return
@@ -206,7 +211,6 @@ def run_script():
     try:
         folder_id = "1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn"
         shared_link = upload_to_drive(zip_filepath, folder_id)
-        recipient_email = "mayankch283@gmail.com"
         send_email(shared_link, recipient_email)
         messagebox.showinfo(
             "Success", "Process completed and file uploaded to Google Drive"
@@ -220,6 +224,7 @@ root.title("Operation Automation")
 
 all_in_one_path = tk.StringVar()
 destination_path = tk.StringVar()
+recipient_email_var = tk.StringVar()
 
 tk.Label(root, text="All in one folder:").grid(row=0, column=0, padx=10, pady=10)
 tk.Entry(root, textvariable=all_in_one_path, width=50).grid(
@@ -237,6 +242,11 @@ tk.Button(root, text="Browse", command=select_destination_folder).grid(
     row=1, column=2, padx=10, pady=10
 )
 
-tk.Button(root, text="Run", command=run_script).grid(row=2, column=1, padx=10, pady=10)
+tk.Label(root, text="Recipient Email:").grid(row=2, column=0, padx=10, pady=10)
+tk.Entry(root, textvariable=recipient_email_var, width=50).grid(
+    row=2, column=1, padx=10, pady=10
+)
+
+tk.Button(root, text="Run", command=run_script).grid(row=3, column=1, padx=10, pady=10)
 
 root.mainloop()
