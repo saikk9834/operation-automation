@@ -17,6 +17,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
 
+
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
     try:
@@ -27,8 +28,10 @@ def resource_path(relative_path):
 
     return os.path.join(base_path, relative_path)
 
+
 load_dotenv(dotenv_path=resource_path(".env"))
-CONFIG_FILE = os.path.join(os.path.expanduser('~'), '.operation_automation_config.json')
+CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".operation_automation_config.json")
+
 
 def select_all_in_one_folder():
     folder_selected = filedialog.askdirectory()
@@ -107,12 +110,17 @@ def upload_to_drive(file_path, folder_id):
         raise
 
 
-def send_email(shared_link, recipient_email):
+def send_email(shared_link, recipient_email, cc_email=None):
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD")
     msg = MIMEMultipart()
     msg["From"] = sender_email
     msg["To"] = recipient_email
+    if cc_email:
+        msg["Cc"] = cc_email
+        recipients = [recipient_email] + [cc_email]
+    else:
+        recipients = [recipient_email]
     msg["Subject"] = "Shared Google Drive Link"
     body = f"Here is the shared link to the uploaded file: {shared_link}"
     msg.attach(MIMEText(body, "plain"))
@@ -127,38 +135,44 @@ def send_email(shared_link, recipient_email):
     except smtplib.SMTPException as e:
         print(f"Error: Unable to send email - {str(e)}")
 
+
 def load_settings():
     if os.path.exists(CONFIG_FILE):
         try:
-            with open(CONFIG_FILE, 'r') as f:
+            with open(CONFIG_FILE, "r") as f:
                 config = json.load(f)
-                all_in_one_path.set(config.get('all_in_one_path', ''))
-                destination_path.set(config.get('destination_path', ''))
-                recipient_email_var.set(config.get('recipient_email', ''))
+                all_in_one_path.set(config.get("all_in_one_path", ""))
+                destination_path.set(config.get("destination_path", ""))
+                recipient_email_var.set(config.get("recipient_email", ""))
+                cc_email_var.set(config.get("cc_email", ""))
         except Exception as e:
             messagebox.showwarning("Warning", f"Failed to load settings: {str(e)}")
 
 
 def save_settings():
     config = {
-        'all_in_one_path': all_in_one_path.get(),
-        'destination_path': destination_path.get(),
-        'recipient_email': recipient_email_var.get()
+        "all_in_one_path": all_in_one_path.get(),
+        "destination_path": destination_path.get(),
+        "recipient_email": recipient_email_var.get(),
+        "cc_email": cc_email_var.get(),
     }
     try:
-        with open(CONFIG_FILE, 'w') as f:
+        with open(CONFIG_FILE, "w") as f:
             json.dump(config, f)
     except Exception as e:
         messagebox.showwarning("Warning", f"Failed to save settings: {str(e)}")
+
 
 def on_closing():
     save_settings()
     root.destroy()
 
+
 def run_script():
     all_in_one = all_in_one_path.get()
     destination = destination_path.get()
     recipient_email = recipient_email_var.get()
+    cc_email = cc_email_var.get()
 
     if not all_in_one or not destination or not recipient_email:
         messagebox.showerror("Error", "All paths and recipient email must be set")
@@ -240,7 +254,7 @@ def run_script():
     try:
         folder_id = "1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn"
         shared_link = upload_to_drive(zip_filepath, folder_id)
-        send_email(shared_link, recipient_email)
+        send_email(shared_link, recipient_email, cc_email)
         messagebox.showinfo(
             "Success", "Process completed and file uploaded to Google Drive"
         )
@@ -254,6 +268,7 @@ root.title("Operation Automation")
 all_in_one_path = tk.StringVar()
 destination_path = tk.StringVar()
 recipient_email_var = tk.StringVar()
+cc_email_var = tk.StringVar()
 
 # Load the previous settings
 load_settings()
@@ -279,7 +294,12 @@ tk.Entry(root, textvariable=recipient_email_var, width=50).grid(
     row=2, column=1, padx=10, pady=10
 )
 
-tk.Button(root, text="Run", command=run_script).grid(row=3, column=1, padx=10, pady=10)
+tk.Label(root, text="CC Email:").grid(row=3, column=0, padx=10, pady=5)
+tk.Entry(root, textvariable=cc_email_var, width=50).grid(
+    row=3, column=1, padx=10, pady=5
+)
+
+tk.Button(root, text="Run", command=run_script).grid(row=4, column=1, padx=10, pady=10)
 
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
