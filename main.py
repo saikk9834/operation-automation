@@ -252,7 +252,7 @@ def run_script():
     zip_filepath = os.path.join(destination, zip_filename)
     zip_folder(destination, zip_filepath)
     try:
-        folder_id = "1N0C4KXzR3RIUf1iSFPlXWNQUqsCoitnn"
+        folder_id = "1eGk8Tuzl1fmOYR8ZUluwW07fBCi800r2"
         shared_link = upload_to_drive(zip_filepath, folder_id)
         send_email(shared_link, recipient_email, cc_email)
         messagebox.showinfo(
