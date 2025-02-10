@@ -16,7 +16,9 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from dotenv import load_dotenv
-
+from sticker_processor import StickerProcessor
+import re
+from pathlib import Path
 
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -167,6 +169,24 @@ def on_closing():
     save_settings()
     root.destroy()
 
+def process_sticker_folders(input_dir: Path, output_dir: Path) -> None:
+    processor = StickerProcessor()
+    output_dir.mkdir(exist_ok=True)
+
+    all_stickers = []
+    for subfolder in input_dir.iterdir():
+        if subfolder.is_dir():
+            match = re.search(r'(\d+)\s*copy', subfolder.name.lower())
+            if match:
+                copies = int(match.group(1))
+                for sticker_path in subfolder.glob("*.*"):
+                    for _ in range(copies):
+                        all_stickers.append(sticker_path)
+    
+    if all_stickers:
+        generated_files = processor.process_multi_sticker_order(all_stickers, output_dir)
+        print(f"Generated sticker sheets: {generated_files}")
+
 
 def run_script():
     all_in_one = all_in_one_path.get()
@@ -247,6 +267,10 @@ def run_script():
         for order_id, sku, quantity in not_found:
             writer.writerow([order_id, sku, quantity])
     remove_empty_folders(destination)
+    process_sticker_folders(
+        Path(destination) / "stickers",
+    Path(destination) / "stickers"
+    )
     date_str = datetime.now().strftime("%d%m%Y")
     zip_filename = f"{date_str}onlineorder.zip"
     zip_filepath = os.path.join(destination, zip_filename)
