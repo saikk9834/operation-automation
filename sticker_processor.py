@@ -95,6 +95,7 @@ class StickerProcessor:
         sheets_needed = max(1, math.ceil(quantity / stickers_per_sheet))
         
         for _ in range(sheets_needed):
+            # Create a transparent canvas instead of white
             current_sheet = Image.new('RGBA', canvas_size, (0, 0, 0, 0))
             
             # Place stickers at calculated positions
@@ -117,12 +118,12 @@ class StickerProcessor:
             sticker_image = sticker_image.convert("RGBA").resize(self.sticker_pixels)
         
         new_size = tuple(dim + 2 * self.bleeding_pixels for dim in sticker_image.size)
-        new_image = Image.new('RGBA', new_size, (255, 255, 255, 0))
-        # Create white border
-        white_border = Image.new('RGBA', new_size, (255, 255, 255, 255))
+        new_image = Image.new('RGBA', new_size, (0, 0, 0, 0))  # Changed to transparent
+        # Create transparent border instead of white
+        transparent_border = Image.new('RGBA', new_size, (0, 0, 0, 0))
         position = (self.bleeding_pixels, self.bleeding_pixels)
-        white_border.paste(sticker_image, position, sticker_image)
-        return white_border
+        transparent_border.paste(sticker_image, position, sticker_image)
+        return transparent_border
 
     def add_registration_marks(self, canvas: Image.Image) -> None:
         """Add 5mm × 5mm black square registration marks to all four corners."""
@@ -155,8 +156,8 @@ class StickerProcessor:
             canvas_inches = (canvas_size[0]/self.dpi, canvas_size[1]/self.dpi)
             rows, cols = self.grid_sizes[canvas_inches]
             
-            # Create a single sheet (or more if needed); here just one for example
-            sheet = Image.new('RGBA', canvas_size, (255, 255, 255, 0))
+            # Create a transparent sheet instead of white
+            sheet = Image.new('RGBA', canvas_size, (0, 0, 0, 0))
             for i, pos in enumerate(positions):
                 sticker = sticker_images[i % len(sticker_images)]
                 sheet.paste(sticker, pos, sticker)
@@ -168,4 +169,3 @@ class StickerProcessor:
             generated_files.append(output_path)
         
         return generated_files
-
