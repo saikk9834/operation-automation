@@ -21,7 +21,7 @@ class StickerOrder:
 class StickerProcessor:
     def __init__(self,
                  sticker_size: Tuple[int, int] = (2, 2),  # inches
-                 bleeding_pixels: int = 12,
+                 bleeding_pixels: int = 4,
                  canvas_sizes: List[Tuple[int, int]] = [(10, 8), (10, 10)]):
         self.dpi = 300  # 300 pixels per inch
         self.mm_to_pixels = self.dpi / 25.4  # Convert mm to pixels
@@ -142,7 +142,7 @@ class StickerProcessor:
         # Create output image with original sticker and die cut line
         output = cv2_image.copy()
         # White die cut line with specified thickness
-        cv2.drawContours(output, die_cut_contours, -1, (255, 255, 255, 255), 20)
+        cv2.drawContours(output, die_cut_contours, -1, (255, 255, 255, 255), 6)
         
         # Convert back to PIL Image
         output_pil = Image.fromarray(cv2.cvtColor(output, cv2.COLOR_BGRA2RGBA))
