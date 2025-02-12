@@ -19,7 +19,7 @@ class StickerOrder:
 class StickerProcessor:
     def __init__(self, 
                  sticker_size: Tuple[int, int] = (2, 2),  # inches
-                 bleeding_pixels: int = 4,
+                 bleeding_pixels: int = 8,
                  canvas_sizes: List[Tuple[int, int]] = [(10, 8), (10, 10)]):  # inches
         self.dpi = 300  # 300 pixels per inch
         self.mm_to_pixels = self.dpi / 25.4  # Convert mm to pixels
