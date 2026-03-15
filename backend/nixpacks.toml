@@ -1,0 +1,6 @@
+# backend/nixpacks.toml
+[phases.setup]
+nixPkgs = ["libglib2", "libsm", "libxrender", "libxext"]
+
+[variables]
+NIXPACKS_PYTHON_VERSION = "3.12"
