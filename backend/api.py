@@ -24,8 +24,6 @@ app = Flask(__name__)
 CORS(app, origins=[
     "http://localhost:5173",   # Vite dev server
     "http://localhost:3000",   # CRA / other dev servers
-    "http://localhost:8000",   # direct hits (e.g. standalone.html opened locally)
-    "null",                    # file:// origin (standalone.html opened from disk),
     "https://operation-automation.vercel.app/"
 ])
 
