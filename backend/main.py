@@ -1,5 +1,3 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
 import sys
 import os
 import shutil
@@ -26,12 +24,12 @@ def resource_path(relative_path):
         # PyInstaller creates a temp folder and stores the path in sys._MEIPASS
         base_path = sys._MEIPASS  # pylint: disable=no-member
     except AttributeError:
-        base_path = os.path.abspath(".")
+        base_path = os.path.abspath("..")
 
     return os.path.join(base_path, relative_path)
 
 
-load_dotenv(dotenv_path=resource_path(".env"))
+load_dotenv(dotenv_path=resource_path("../.env"))
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".operation_automation_config.json")
 
 
@@ -52,7 +50,7 @@ def zip_folder(folder_path, zip_path):
                 zipf.write(
                     os.path.join(root_dir, file),
                     os.path.relpath(
-                        os.path.join(root_dir, file), os.path.join(folder_path, "..")
+                        os.path.join(root_dir, file), os.path.join(folder_path, "../..")
                     ),
                 )
 
@@ -258,17 +256,12 @@ def run_script(all_in_one,destination,recipient_email,cc_email):
     zip_filename = f"{date_str}onlineorder.zip"
     zip_filepath = os.path.join(destination, zip_filename)
     zip_folder(destination, zip_filepath)
-    try:
-        folder_id = "1eGk8Tuzl1fmOYR8ZUluwW07fBCi800r2"
-        shared_link = upload_to_drive(zip_filepath, folder_id)
-        send_email(shared_link, recipient_email, cc_email)
-        messagebox.showinfo(
-            "Success", "Process completed and file uploaded to Google Drive"
-        )
-    except Exception as e:
-        messagebox.showerror("Error", f"Upload failed: {str(e)}")
+    folder_id = "1eGk8Tuzl1fmOYR8ZUluwW07fBCi800r2"
+    shared_link = upload_to_drive(zip_filepath, folder_id)
+    send_email(shared_link, recipient_email, cc_email)
 
 
+'''
 root = tk.Tk()
 root.title("Operation Automation")
 
@@ -311,3 +304,4 @@ tk.Button(root, text="Run", command=run_script).grid(row=4, column=1, padx=10, p
 root.protocol("WM_DELETE_WINDOW", on_closing)
 
 root.mainloop()
+'''

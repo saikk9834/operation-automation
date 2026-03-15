@@ -5,3 +5,6 @@ credentials.json
 build
 dist
 *.spec
+frontend/node_modules
+frontend/package-lock.json
+.idea

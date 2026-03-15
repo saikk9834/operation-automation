@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Operation Automation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0b0c0f;
+    --surface:   #13151a;
+    --border:    #232530;
+    --accent:    #e8ff5a;
+    --accent2:   #5affca;
+    --muted:     #4a4f60;
+    --text:      #e4e6ef;
+    --text-dim:  #7a7f94;
+    --danger:    #ff5a6e;
+    --success:   #5affca;
+    --mono:      'DM Mono', monospace;
+    --display:   'Syne', sans-serif;
+    --radius:    6px;
+    --transition: 220ms cubic-bezier(.4,0,.2,1);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 40px 20px 80px;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(232,255,90,.07) 0%, transparent 60%),
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,.018) 39px, rgba(255,255,255,.018) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,.018) 39px, rgba(255,255,255,.018) 40px);
+  }
+
+  /* ── Layout ── */
+  .shell {
+    width: 100%;
+    max-width: 680px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 0 0 36px;
+    position: relative;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tag::before {
+    content: '';
+    display: inline-block;
+    width: 18px; height: 1px;
+    background: var(--accent);
+  }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(28px, 5vw, 42px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -.02em;
+    color: #fff;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    letter-spacing: .04em;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(232,255,90,.025) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Form fields ── */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    margin-bottom: 28px;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  label {
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .input-row {
+    display: flex;
+    gap: 0;
+  }
+  input[type="text"],
+  input[type="email"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  input[type="text"] { border-radius: var(--radius) 0 0 var(--radius); }
+  input[type="text"]:only-child { border-radius: var(--radius); }
+  input[type="email"] { border-radius: var(--radius); }
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(232,255,90,.12);
+  }
+  input::placeholder { color: var(--muted); font-size: 12px; }
+  input:disabled { opacity: .4; cursor: not-allowed; }
+
+  .path-note {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .icon-btn {
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-left: none;
+    border-radius: 0 var(--radius) var(--radius) 0;
+    color: var(--text-dim);
+    padding: 0 14px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background var(--transition), color var(--transition);
+  }
+  .icon-btn:hover { background: #2a2d38; color: var(--text); }
+  .icon-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* ── Run button ── */
+  .run-btn {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--accent);
+    color: #0b0c0f;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+  }
+  .run-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(232,255,90,.25);
+  }
+  .run-btn:active:not(:disabled) { transform: translateY(0); }
+  .run-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .run-btn.running {
+    background: var(--border);
+    color: var(--text-dim);
+  }
+
+  /* ── Spinner ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+
+  /* ── Log panel ── */
+  .log-panel {
+    margin-top: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    max-height: 260px;
+    overflow-y: auto;
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .log-panel.visible { display: block; }
+  .log-line {
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-dim);
+    padding: 1px 0;
+  }
+  .log-line.success { color: var(--success); }
+  .log-line.error   { color: var(--danger); }
+  .log-line.new {
+    animation: fadeIn .3s ease forwards;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ── Status banner ── */
+  .banner {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-top: 16px;
+  }
+  .banner.visible { display: flex; }
+  .banner.success { background: rgba(90,255,202,.08); border: 1px solid rgba(90,255,202,.2); color: var(--success); }
+  .banner.error   { background: rgba(255,90,110,.08); border: 1px solid rgba(255,90,110,.2); color: var(--danger); }
+
+  /* ── Save indicator ── */
+  .save-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: -8px;
+    margin-bottom: 12px;
+  }
+  .save-indicator {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    opacity: 0;
+    transition: opacity .4s;
+  }
+  .save-indicator.show { opacity: 1; }
+
+  /* ── Footer ── */
+  footer {
+    margin-top: 32px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: .1em;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .card { padding: 22px 18px; }
+    body { padding: 24px 14px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header>
+    <div class="tag">Automation System</div>
+    <h1>Operation <span>Automation</span></h1>
+    <p class="subtitle">Configure paths and credentials, then run the fulfillment pipeline.</p>
+  </header>
+
+  <div class="card">
+    <!-- Paths -->
+    <div class="section-label">File Paths</div>
+    <div class="field-group">
+      <div class="field">
+        <label for="all-in-one">All-in-One Folder</label>
+        <div class="input-row">
+          <input type="text" id="all-in-one" placeholder="/path/to/artwork-source" autocomplete="off" />
+          <button class="icon-btn" title="Copy from clipboard" onclick="pasteField('all-in-one')">⎘</button>
+        </div>
+        <span class="path-note">Server-side absolute path to the folder containing all artwork files.</span>
+      </div>
+      <div class="field">
+        <label for="destination">Destination Folder</label>
+        <div class="input-row">
+          <input type="text" id="destination" placeholder="/path/to/output-folder" autocomplete="off" />
+          <button class="icon-btn" title="Copy from clipboard" onclick="pasteField('destination')">⎘</button>
+        </div>
+        <span class="path-note">Server-side absolute path where sorted files and the ZIP will be written.</span>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Email -->
+    <div class="section-label">Notifications</div>
+    <div class="field-group">
+      <div class="field">
+        <label for="recipient">Recipient Email</label>
+        <input type="email" id="recipient" placeholder="team@example.com" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="cc">CC Email <span style="color:var(--muted);font-size:9px;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="email" id="cc" placeholder="manager@example.com" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="save-row">
+      <span class="save-indicator" id="save-indicator">✓ Settings saved</span>
+    </div>
+
+    <!-- Run -->
+    <button class="run-btn" id="run-btn" onclick="handleRun()">
+      Run Fulfillment Pipeline
+    </button>
+
+    <!-- Log -->
+    <div class="log-panel" id="log-panel"></div>
+
+    <!-- Banners -->
+    <div class="banner" id="banner-success">
+      <span>✓</span>
+      <span id="banner-success-msg">Pipeline completed successfully. Email sent.</span>
+    </div>
+    <div class="banner" id="banner-error">
+      <span>✕</span>
+      <span id="banner-error-msg">An error occurred. See log above.</span>
+    </div>
+  </div>
+
+  <footer>OPERATION AUTOMATION · INTERNAL TOOL</footer>
+</div>
+
+<script>
+// ── Config ───────────────────────────────────────────────────────────────────
+const API = (window.API_BASE_URL || 'http://localhost:8000') + '/api';
+let pollTimer = null;
+let seenLines = 0;
+
+// ── DOM refs ──────────────────────────────────────────────────────────────────
+const $allInOne   = () => document.getElementById('all-in-one');
+const $dest       = () => document.getElementById('destination');
+const $recipient  = () => document.getElementById('recipient');
+const $cc         = () => document.getElementById('cc');
+const $runBtn     = () => document.getElementById('run-btn');
+const $logPanel   = () => document.getElementById('log-panel');
+const $saveInd    = () => document.getElementById('save-indicator');
+const $bannerOk   = () => document.getElementById('banner-success');
+const $bannerErr  = () => document.getElementById('banner-error');
+
+// ── Load settings on boot ─────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const r = await fetch(`${API}/settings`);
+    if (!r.ok) return;
+    const cfg = await r.json();
+    $allInOne().value  = cfg.all_in_one_path  || '';
+    $dest().value      = cfg.destination_path || '';
+    $recipient().value = cfg.recipient_email  || '';
+    $cc().value        = cfg.cc_email         || '';
+  } catch (e) { /* backend not reachable yet */ }
+}
+
+// ── Auto-save on change ───────────────────────────────────────────────────────
+let saveTimer = null;
+function scheduleAutoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveSettings, 900);
+}
+async function saveSettings() {
+  const body = {
+    all_in_one_path:  $allInOne().value,
+    destination_path: $dest().value,
+    recipient_email:  $recipient().value,
+    cc_email:         $cc().value,
+  };
+  try {
+    await fetch(`${API}/settings`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const ind = $saveInd();
+    ind.classList.add('show');
+    setTimeout(() => ind.classList.remove('show'), 1800);
+  } catch (_) {}
+}
+document.querySelectorAll('input').forEach(el =>
+  el.addEventListener('input', scheduleAutoSave)
+);
+
+// ── Paste from clipboard ──────────────────────────────────────────────────────
+async function pasteField(id) {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById(id).value = text.trim();
+    scheduleAutoSave();
+  } catch (_) { alert('Clipboard access denied — paste manually.'); }
+}
+
+// ── Run pipeline ──────────────────────────────────────────────────────────────
+async function handleRun() {
+  hideBanners();
+  resetLog();
+
+  const body = {
+    all_in_one_path:  $allInOne().value.trim(),
+    destination_path: $dest().value.trim(),
+    recipient_email:  $recipient().value.trim(),
+    cc_email:         $cc().value.trim(),
+  };
+
+  // Client-side validation
+  if (!body.all_in_one_path || !body.destination_path || !body.recipient_email) {
+    showError('Please fill in all required fields before running.');
+    return;
+  }
+
+  setRunning(true);
+
+  try {
+    await fetch(`${API}/reset`, { method: 'POST' });
+    const r = await fetch(`${API}/run`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const data = await r.json();
+    if (!r.ok) { showError(data.error || 'Server error'); setRunning(false); return; }
+    startPolling();
+  } catch (e) {
+    showError('Cannot reach backend. Is api.py running?');
+    setRunning(false);
+  }
+}
+
+// ── Poll /api/status ──────────────────────────────────────────────────────────
+function startPolling() {
+  pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/status`);
+      const s = await r.json();
+      renderNewLogLines(s.log);
+      if (!s.running) {
+        clearInterval(pollTimer);
+        setRunning(false);
+        if (s.error) {
+          showError(s.error);
+        } else if (s.done) {
+          showSuccess('Pipeline completed. Email notification sent.');
+        }
+      }
+    } catch (_) { /* transient network blip */ }
+  }, 800);
+}
+
+// ── Log helpers ───────────────────────────────────────────────────────────────
+function resetLog() {
+  seenLines = 0;
+  $logPanel().innerHTML = '';
+  $logPanel().classList.remove('visible');
+}
+
+function renderNewLogLines(lines) {
+  if (!lines || lines.length === seenLines) return;
+  const panel = $logPanel();
+  panel.classList.add('visible');
+  for (let i = seenLines; i < lines.length; i++) {
+    const div = document.createElement('div');
+    div.className = 'log-line new';
+    const txt = lines[i];
+    if (txt.startsWith('✅') || txt.startsWith('✓')) div.classList.add('success');
+    if (txt.startsWith('❌') || txt.startsWith('Error')) div.classList.add('error');
+    div.textContent = txt;
+    panel.appendChild(div);
+    setTimeout(() => div.classList.remove('new'), 400);
+  }
+  seenLines = lines.length;
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ── UI state ──────────────────────────────────────────────────────────────────
+function setRunning(on) {
+  const btn = $runBtn();
+  const inputs = document.querySelectorAll('input, .icon-btn');
+  btn.disabled = on;
+  inputs.forEach(el => el.disabled = on);
+  btn.classList.toggle('running', on);
+  btn.innerHTML = on
+    ? '<span class="spinner"></span>Running…'
+    : 'Run Fulfillment Pipeline';
+}
+
+function hideBanners() {
+  $bannerOk().classList.remove('visible');
+  $bannerErr().classList.remove('visible');
+}
+
+function showSuccess(msg) {
+  document.getElementById('banner-success-msg').textContent = msg;
+  $bannerOk().classList.add('visible');
+}
+
+function showError(msg) {
+  document.getElementById('banner-error-msg').textContent = msg;
+  $bannerErr().classList.add('visible');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+loadSettings();
+</script>
+</body>
+</html>
