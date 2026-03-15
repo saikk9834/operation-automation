@@ -17,19 +17,12 @@ from sticker_processor import StickerProcessor
 import re
 from pathlib import Path
 
-def resource_path(relative_path):
-    """Get absolute path to resource, works for dev and for PyInstaller"""
-    try:
-        # PyInstaller creates a temp folder and stores the path in sys._MEIPASS
-        base_path = sys._MEIPASS  # pylint: disable=no-member
-    except AttributeError:
-        base_path = os.path.abspath("..")
 
-    return os.path.join(base_path, relative_path)
+def resource_path(relative_path):
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), relative_path)
 
 
 load_dotenv(dotenv_path=resource_path("../.env"))
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".operation_automation_config.json")
 
 
 def zip_folder(folder_path, zip_path):
@@ -124,6 +117,7 @@ def send_email(shared_link, recipient_email, cc_email=None):
     except smtplib.SMTPException as e:
         print(f"Error: Unable to send email - {str(e)}")
 
+
 def process_sticker_folders(input_dir: Path, output_dir: Path) -> None:
     processor = StickerProcessor()
     output_dir.mkdir(exist_ok=True)
@@ -137,13 +131,13 @@ def process_sticker_folders(input_dir: Path, output_dir: Path) -> None:
                 for sticker_path in subfolder.glob("*.*"):
                     for _ in range(copies):
                         all_stickers.append(sticker_path)
-    
+
     if all_stickers:
         generated_files = processor.process_multi_sticker_order(all_stickers, output_dir)
         print(f"Generated sticker sheets: {generated_files}")
 
 
-def run_script(all_in_one,destination,recipient_email,cc_email):
+def run_script(all_in_one, destination, recipient_email, cc_email):
     orders = script.get_data("Order")
     unfulfilled_skus = []
     not_found = []
@@ -195,10 +189,10 @@ def run_script(all_in_one,destination,recipient_email,cc_email):
         if not file_found:
             not_found.append((order_id, sku, quantity))
     with open(
-        os.path.join(destination, "not_found.csv"),
-        mode="w",
-        newline="",
-        encoding="utf-8",
+            os.path.join(destination, "not_found.csv"),
+            mode="w",
+            newline="",
+            encoding="utf-8",
     ) as file:
         writer = csv.writer(file)
         writer.writerow(["Order ID", "SKU", "Quantity"])
@@ -207,7 +201,7 @@ def run_script(all_in_one,destination,recipient_email,cc_email):
     remove_empty_folders(destination)
     process_sticker_folders(
         Path(destination) / "stickers",
-    Path(destination) / "stickers"
+        Path(destination) / "stickers"
     )
     date_str = datetime.now().strftime("%d%m%Y")
     zip_filename = f"{date_str}onlineorder.zip"
