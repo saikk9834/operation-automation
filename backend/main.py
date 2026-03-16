@@ -177,8 +177,7 @@ def send_email(shared_link, recipient_email, cc_email=None):
         f"Here is the shared link to the uploaded file: {shared_link}", "plain"
     ))
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, recipients, msg.as_string())
         server.quit()
