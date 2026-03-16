@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 const API = (import.meta.env.VITE_API_URL ?? "") + "/api";
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
+// ── Hooks ──────────────────────────────────────────────────────────────────────
 
 function useSettings(setForm) {
   useEffect(() => {
@@ -10,8 +10,7 @@ function useSettings(setForm) {
       .then((r) => r.json())
       .then((cfg) =>
         setForm({
-          all_in_one_path:  cfg.all_in_one_path  ?? "",
-          destination_path: cfg.destination_path ?? "",
+          source_folder_id: cfg.source_folder_id ?? "",
           recipient_email:  cfg.recipient_email  ?? "",
           cc_email:         cfg.cc_email         ?? "",
         })
@@ -42,8 +41,8 @@ function useAutoSave(form) {
 }
 
 function usePipeline() {
-  const [status, setStatus]   = useState("idle");
-  const [log, setLog]         = useState([]);
+  const [status, setStatus]     = useState("idle");
+  const [log, setLog]           = useState([]);
   const [errorMsg, setErrorMsg] = useState("");
   const pollRef = useRef(null);
 
@@ -58,8 +57,8 @@ function usePipeline() {
         if (s.log.length > seen) { setLog([...s.log]); seen = s.log.length; }
         if (!s.running) {
           stopPolling();
-          if (s.error)    { setErrorMsg(s.error); setStatus("error"); }
-          else if (s.done) setStatus("done");
+          if (s.error)     { setErrorMsg(s.error); setStatus("error"); }
+          else if (s.done)   setStatus("done");
         }
       } catch (_) {}
     }, 800);
@@ -78,7 +77,7 @@ function usePipeline() {
       if (!r.ok) { setErrorMsg(data.error ?? "Server error"); setStatus("error"); return; }
       startPolling();
     } catch (_) {
-      setErrorMsg("Cannot reach backend. Is api.py running on port 8000?");
+      setErrorMsg("Cannot reach backend. Is api.py running?");
       setStatus("error");
     }
   }, [startPolling]);
@@ -87,182 +86,25 @@ function usePipeline() {
   return { status, log, errorMsg, run };
 }
 
-// ── FolderPicker modal ────────────────────────────────────────────────────────
+// ── Sub-components ─────────────────────────────────────────────────────────────
 
-function FolderPicker({ onSelect, onClose }) {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
-
-  const load = useCallback(async (path) => {
-    setLoading(true); setError("");
-    try {
-      const url = `${API}/browse` + (path ? `?path=${encodeURIComponent(path)}` : "");
-      const r = await fetch(url);
-      if (!r.ok) { const e = await r.json(); throw new Error(e.error); }
-      setData(await r.json());
-    } catch (e) {
-      setError(e.message || "Failed to load directory");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  // Close on Escape
-  useEffect(() => {
-    const h = (e) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
-  }, [onClose]);
-
-  return (
-    <div style={s.overlay} onClick={onClose}>
-      <div style={s.modal} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div style={s.modalHeader}>
-          <span style={s.modalTitle}>Select Folder</span>
-          <button onClick={onClose} style={s.closeBtn}>✕</button>
-        </div>
-
-        {/* Breadcrumbs */}
-        {data && (
-          <div style={s.breadcrumbs}>
-            {data.breadcrumbs.map((b, i) => (
-              <span key={b.path} style={s.breadcrumbWrap}>
-                {i > 0 && <span style={s.breadSep}>/</span>}
-                <button
-                  style={s.breadBtn}
-                  onClick={() => load(b.path)}
-                >
-                  {b.name}
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Current path display */}
-        {data && (
-          <div style={s.currentPath}>{data.current}</div>
-        )}
-
-        {/* Directory listing */}
-        <div style={s.dirList}>
-          {loading && <div style={s.dimText}>Loading…</div>}
-          {error   && <div style={s.errorText}>{error}</div>}
-          {!loading && !error && data && data.entries.length === 0 && (
-            <div style={s.dimText}>No sub-folders here</div>
-          )}
-          {!loading && data && data.entries.map((entry) => (
-            <div
-              key={entry.path}
-              style={s.dirEntry}
-              onClick={() => entry.has_children ? load(entry.path) : null}
-              onDoubleClick={() => load(entry.path)}
-            >
-              <span style={s.folderIcon}>📁</span>
-              <span style={{ ...s.entryName, ...(entry.has_children ? {} : s.entryLeaf) }}>
-                {entry.name}
-              </span>
-              {entry.has_children && <span style={s.chevron}>›</span>}
-            </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div style={s.modalFooter}>
-          <span style={s.selectedLabel}>
-            {data ? <><strong style={{ color: "#e4e6ef" }}>Selected:</strong> {data.current}</> : ""}
-          </span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={onClose} style={s.cancelBtn}>Cancel</button>
-            <button
-              onClick={() => data && onSelect(data.current)}
-              disabled={!data}
-              style={s.selectBtn}
-            >
-              Select This Folder
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── PathField — text input + browse button ────────────────────────────────────
-
-function PathField({ id, label, value, onChange, disabled, note }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
-
-  const paste = async () => {
-    try {
-      const t = await navigator.clipboard.readText();
-      onChange(id, t.trim());
-    } catch (_) { alert("Clipboard access denied — paste the path manually."); }
-  };
-
-  return (
-    <div style={s.field}>
-      <label style={s.label} htmlFor={id}>{label}</label>
-      <div style={s.inputRow}>
-        <input
-          id={id}
-          type="text"
-          value={value}
-          placeholder="Click Browse or paste a path…"
-          disabled={disabled}
-          autoComplete="off"
-          onChange={(e) => onChange(id, e.target.value)}
-          style={{ ...s.input, ...s.inputMultiBtn, ...(disabled ? s.inputDisabled : {}) }}
-        />
-        <button onClick={paste} disabled={disabled} style={s.iconBtn} title="Paste from clipboard">⎘</button>
-        <button
-          onClick={() => setPickerOpen(true)}
-          disabled={disabled}
-          style={{ ...s.iconBtn, ...s.browseBtn }}
-          title="Browse server folders"
-        >
-          Browse
-        </button>
-      </div>
-      {note && <span style={s.note}>{note}</span>}
-
-      {pickerOpen && (
-        <FolderPicker
-          onSelect={(path) => { onChange(id, path); setPickerOpen(false); }}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── EmailField ─────────────────────────────────────────────────────────────────
-
-function EmailField({ id, label, value, onChange, disabled, optional }) {
+function InputField({ id, label, type = "text", value, onChange, disabled, placeholder, note, optional }) {
   return (
     <div style={s.field}>
       <label style={s.label} htmlFor={id}>
-        {label}{optional && <span style={s.optTag}> optional</span>}
+        {label}
+        {optional && <span style={s.optTag}> optional</span>}
       </label>
       <input
-        id={id}
-        type="email"
-        value={value}
-        placeholder="email@example.com"
-        disabled={disabled}
-        autoComplete="off"
+        id={id} type={type} value={value} placeholder={placeholder}
+        disabled={disabled} autoComplete="off"
         onChange={(e) => onChange(id, e.target.value)}
         style={{ ...s.input, ...(disabled ? s.inputDisabled : {}) }}
       />
+      {note && <span style={s.note}>{note}</span>}
     </div>
   );
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 function LogPanel({ lines }) {
   const ref = useRef(null);
@@ -274,7 +116,7 @@ function LogPanel({ lines }) {
         <div key={i} style={{
           ...s.logLine,
           ...(line.startsWith("✅") || line.startsWith("✓") ? s.logSuccess : {}),
-          ...(line.startsWith("❌") || line.startsWith("Error") ? s.logError : {}),
+          ...(line.startsWith("❌") || line.startsWith("⚠")  ? s.logError   : {}),
         }}>{line}</div>
       ))}
     </div>
@@ -293,11 +135,13 @@ function Banner({ type, message }) {
 
 function Spinner() { return <span style={s.spinner} />; }
 
-// ── Main App ──────────────────────────────────────────────────────────────────
+// ── Main App ───────────────────────────────────────────────────────────────────
 
 export default function App() {
   const [form, setForm] = useState({
-    all_in_one_path: "", destination_path: "", recipient_email: "", cc_email: "",
+    source_folder_id: "",
+    recipient_email:  "",
+    cc_email:         "",
   });
 
   const setFormCb = useCallback((next) => setForm(next), []);
@@ -310,37 +154,51 @@ export default function App() {
   const handleChange = (id, val) => setForm((prev) => ({ ...prev, [id]: val }));
 
   const handleRun = () => {
-    const missing = [];
-    if (!form.all_in_one_path.trim())  missing.push("All-in-One Folder");
-    if (!form.destination_path.trim()) missing.push("Destination Folder");
-    if (!form.recipient_email.trim())  missing.push("Recipient Email");
-    if (missing.length) { alert(`Please fill in: ${missing.join(", ")}`); return; }
+    if (!form.source_folder_id.trim()) { alert("Please enter the Google Drive source folder ID."); return; }
+    if (!form.recipient_email.trim())  { alert("Please enter the recipient email."); return; }
     run(form);
+  };
+
+  // Extract folder ID if user pastes a full Drive URL instead of just the ID
+  const handleFolderInput = (id, val) => {
+    const match = val.match(/folders\/([a-zA-Z0-9_-]+)/);
+    handleChange(id, match ? match[1] : val);
   };
 
   return (
     <div style={s.page}>
       <div style={s.shell}>
+
+        {/* Header */}
         <header style={s.header}>
           <div style={s.tag}><span style={s.tagLine} /> Automation System</div>
           <h1 style={s.h1}>Operation <span style={s.accent}>Automation</span></h1>
-          <p style={s.subtitle}>Configure paths and credentials, then run the fulfillment pipeline.</p>
+          <p style={s.subtitle}>Connect your Google Drive source folder, set notification emails, then run.</p>
         </header>
 
         <div style={s.card}>
-          {/* Paths */}
-          <div style={s.sectionLabel}><span>File Paths</span><span style={s.sectionLine} /></div>
+
+          {/* Source folder */}
+          <div style={s.sectionLabel}><span>Google Drive Source</span><span style={s.sectionLine} /></div>
           <div style={s.fieldGroup}>
-            <PathField
-              id="all_in_one_path" label="All-in-One Folder"
-              value={form.all_in_one_path} onChange={handleChange} disabled={isRunning}
-              note="Server-side path to the folder containing all artwork files."
-            />
-            <PathField
-              id="destination_path" label="Destination Folder"
-              value={form.destination_path} onChange={handleChange} disabled={isRunning}
-              note="Server-side path where sorted files and the final ZIP will be written."
-            />
+            <div style={s.field}>
+              <label style={s.label} htmlFor="source_folder_id">Artwork Source Folder</label>
+              <input
+                id="source_folder_id"
+                type="text"
+                value={form.source_folder_id}
+                placeholder="Paste folder ID or full Drive URL"
+                disabled={isRunning}
+                autoComplete="off"
+                onChange={(e) => handleFolderInput("source_folder_id", e.target.value)}
+                style={{ ...s.input, ...(isRunning ? s.inputDisabled : {}) }}
+              />
+              <span style={s.note}>
+                Open your artwork folder in Google Drive, then copy the ID from the URL:
+                drive.google.com/drive/folders/<span style={{ color: "#e8ff5a" }}>THIS_PART</span>.
+                You can also paste the full URL — the ID will be extracted automatically.
+              </span>
+            </div>
           </div>
 
           <div style={s.divider} />
@@ -348,22 +206,45 @@ export default function App() {
           {/* Email */}
           <div style={s.sectionLabel}><span>Notifications</span><span style={s.sectionLine} /></div>
           <div style={s.fieldGroup}>
-            <EmailField id="recipient_email" label="Recipient Email" value={form.recipient_email} onChange={handleChange} disabled={isRunning} />
-            <EmailField id="cc_email" label="CC Email" value={form.cc_email} onChange={handleChange} disabled={isRunning} optional />
+            <InputField
+              id="recipient_email" label="Recipient Email" type="email"
+              value={form.recipient_email} onChange={handleChange} disabled={isRunning}
+              placeholder="team@example.com"
+            />
+            <InputField
+              id="cc_email" label="CC Email" type="email"
+              value={form.cc_email} onChange={handleChange} disabled={isRunning}
+              placeholder="manager@example.com" optional
+            />
           </div>
 
+          {/* Save indicator */}
           <div style={s.saveRow}>
             <span style={{ ...s.saveInd, opacity: saved ? 1 : 0 }}>✓ Settings saved</span>
           </div>
 
+          {/* Run button */}
           <button onClick={handleRun} disabled={isRunning}
             style={{ ...s.runBtn, ...(isRunning ? s.runBtnRunning : {}) }}>
             {isRunning ? <><Spinner /> Running…</> : "Run Fulfillment Pipeline"}
           </button>
 
+          {/* Log */}
           <LogPanel lines={log} />
-          {status === "done"  && <Banner type="success" message="Pipeline completed. Email notification sent." />}
-          {status === "error" && <Banner type="error"   message={errorMsg || "An error occurred. Check the log."} />}
+
+          {/* Banners + download */}
+          {status === "done" && (
+            <>
+              <Banner type="success" message="Pipeline completed. Email notification sent." />
+              <a href={`${API}/download`} style={s.downloadBtn} download>
+                ⬇ Download Processed ZIP
+              </a>
+            </>
+          )}
+          {status === "error" && (
+            <Banner type="error" message={errorMsg || "An error occurred. Check the log."} />
+          )}
+
         </div>
 
         <footer style={s.footer}>OPERATION AUTOMATION · INTERNAL TOOL</footer>
@@ -372,7 +253,7 @@ export default function App() {
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Styles ─────────────────────────────────────────────────────────────────────
 
 const s = {
   page: {
@@ -398,13 +279,9 @@ const s = {
   field:        { display: "flex", flexDirection: "column", gap: 6 },
   label:        { fontSize: 11, letterSpacing: ".1em", textTransform: "uppercase", color: "#7a7f94" },
   optTag:       { color: "#4a4f60", fontSize: 9, textTransform: "none", letterSpacing: 0, marginLeft: 4 },
-  inputRow:     { display: "flex" },
-  input:        { flex: 1, background: "#0b0c0f", border: "1px solid #232530", borderRadius: 6, padding: "10px 14px", fontFamily: "'DM Mono',monospace", fontSize: 13, color: "#e4e6ef", outline: "none" },
-  inputMultiBtn:{ borderRadius: "6px 0 0 6px" },
+  input:        { background: "#0b0c0f", border: "1px solid #232530", borderRadius: 6, padding: "10px 14px", fontFamily: "'DM Mono',monospace", fontSize: 13, color: "#e4e6ef", outline: "none", width: "100%" },
   inputDisabled:{ opacity: 0.4, cursor: "not-allowed" },
-  iconBtn:      { background: "#232530", border: "1px solid #232530", borderLeft: "none", borderRadius: 0, color: "#7a7f94", padding: "0 12px", cursor: "pointer", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center" },
-  browseBtn:    { borderRadius: "0 6px 6px 0", fontSize: 11, letterSpacing: ".06em", padding: "0 14px", color: "#e4e6ef", whiteSpace: "nowrap" },
-  note:         { fontSize: 10, color: "#4a4f60", marginTop: 2 },
+  note:         { fontSize: 10, color: "#4a4f60", marginTop: 4, lineHeight: 1.6 },
   divider:      { height: 1, background: "#232530", margin: "24px 0" },
   saveRow:      { display: "flex", justifyContent: "flex-end", marginTop: -8, marginBottom: 12 },
   saveInd:      { fontSize: 10, color: "#4a4f60", letterSpacing: ".08em", transition: "opacity .4s" },
@@ -418,29 +295,6 @@ const s = {
   banner:       { display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 6, fontSize: 13, marginTop: 16 },
   bannerSuccess:{ background: "rgba(90,255,202,.08)", border: "1px solid rgba(90,255,202,.2)", color: "#5affca" },
   bannerError:  { background: "rgba(255,90,110,.08)", border: "1px solid rgba(255,90,110,.2)", color: "#ff5a6e" },
+  downloadBtn:  { display: "block", marginTop: 12, padding: "13px 24px", background: "#5affca", color: "#0b0c0f", borderRadius: 6, textAlign: "center", fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, textDecoration: "none", letterSpacing: ".03em" },
   footer:       { marginTop: 32, textAlign: "center", fontSize: 10, color: "#4a4f60", letterSpacing: ".1em" },
-
-  // ── Modal ──
-  overlay:      { position: "fixed", inset: 0, background: "rgba(0,0,0,.7)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal:        { background: "#13151a", border: "1px solid #2e3140", borderRadius: 12, width: "min(600px, 94vw)", maxHeight: "80vh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,.6)" },
-  modalHeader:  { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #232530" },
-  modalTitle:   { fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15, color: "#fff" },
-  closeBtn:     { background: "none", border: "none", color: "#7a7f94", cursor: "pointer", fontSize: 16, padding: 4, lineHeight: 1 },
-  breadcrumbs:  { display: "flex", flexWrap: "wrap", alignItems: "center", gap: 2, padding: "10px 20px 0", fontSize: 11 },
-  breadcrumbWrap:{ display: "flex", alignItems: "center", gap: 2 },
-  breadSep:     { color: "#4a4f60", margin: "0 2px" },
-  breadBtn:     { background: "none", border: "none", color: "#7a7f94", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 11, padding: "2px 4px", borderRadius: 3 },
-  currentPath:  { padding: "6px 20px 10px", fontSize: 11, color: "#4a4f60", borderBottom: "1px solid #1a1c23", wordBreak: "break-all" },
-  dirList:      { flex: 1, overflowY: "auto", padding: "8px 12px" },
-  dirEntry:     { display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 6, cursor: "pointer", transition: "background .15s" },
-  folderIcon:   { fontSize: 14, flexShrink: 0 },
-  entryName:    { flex: 1, fontSize: 13, color: "#c8cad4", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  entryLeaf:    { color: "#4a4f60" },
-  chevron:      { color: "#4a4f60", fontSize: 18, flexShrink: 0 },
-  dimText:      { padding: "20px 10px", color: "#4a4f60", fontSize: 12, textAlign: "center" },
-  errorText:    { padding: "20px 10px", color: "#ff5a6e", fontSize: 12, textAlign: "center" },
-  modalFooter:  { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 20px", borderTop: "1px solid #232530", flexWrap: "wrap" },
-  selectedLabel:{ fontSize: 11, color: "#4a4f60", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  cancelBtn:    { background: "#1e2028", border: "1px solid #232530", color: "#7a7f94", borderRadius: 6, padding: "8px 16px", cursor: "pointer", fontFamily: "'DM Mono',monospace", fontSize: 12 },
-  selectBtn:    { background: "#e8ff5a", border: "none", color: "#0b0c0f", borderRadius: 6, padding: "8px 18px", cursor: "pointer", fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 12 },
 };
