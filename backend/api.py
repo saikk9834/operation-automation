@@ -11,11 +11,11 @@ CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".operation_automation_confi
 
 app = Flask(__name__)
 
-CORS(app, resources={r"/api/*": {"origins": [
+CORS(app, origins=[
     "http://localhost:5173",
     "http://localhost:3000",
     "https://operation-automation.vercel.app",
-]}})
+])
 
 @app.after_request
 def add_cors_headers(response):
