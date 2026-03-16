@@ -27,6 +27,24 @@ CORS(app, origins=[
     "https://operation-automation.vercel.app/"
 ])
 
+@app.after_request
+def add_cors_headers(response):
+    allowed_origins = [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://operation-automation.vercel.app",
+    ]
+    origin = request.headers.get("Origin")
+    if origin in allowed_origins:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+@app.route("/api/<path:path>", methods=["OPTIONS"])
+def handle_options(path):
+    return "", 204
+
 # ── helpers ────────────────────────────────────────────────────────────────
 
 def load_config() -> dict:
