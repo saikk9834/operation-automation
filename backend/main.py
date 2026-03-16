@@ -33,12 +33,27 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly", # read / download source
 ]
 
+import json
+
+
 def _get_drive_service():
     """Build and return an authenticated Drive service."""
-    creds_path = os.path.join(get_repo_root(), "credentials.json")
-    credentials = service_account.Credentials.from_service_account_file(
-        creds_path, scopes=SCOPES
-    )
+    creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+
+    if creds_json:
+        # Production — read from environment variable (Railway)
+        import google.oauth2.service_account as sa
+        creds_info = json.loads(creds_json)
+        credentials = sa.Credentials.from_service_account_info(
+            creds_info, scopes=SCOPES
+        )
+    else:
+        # Local development — read from credentials.json file
+        creds_path = os.path.join(get_repo_root(), "credentials.json")
+        credentials = service_account.Credentials.from_service_account_file(
+            creds_path, scopes=SCOPES
+        )
+
     return build("drive", "v3", credentials=credentials)
 
 
