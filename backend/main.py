@@ -162,28 +162,27 @@ def upload_to_drive(file_path, folder_id):
 
 
 def send_email(shared_link, recipient_email, cc_email=None):
-    sender_email = os.getenv("SENDER_EMAIL")
-    sender_password = os.getenv("SENDER_PASSWORD")
-    msg = MIMEMultipart()
-    msg["From"] = sender_email
-    msg["To"] = recipient_email
+    import resend
+
+    resend.api_key = os.getenv("RESEND_API_KEY")
+    sender_email   = os.getenv("SENDER_EMAIL", "onboarding@resend.dev")
+
+    params = {
+        "from":    sender_email,
+        "to":      [recipient_email],
+        "subject": "Shared Google Drive Link",
+        "html":    f"<p>Here is the shared link to the uploaded file: "
+                   f"<a href='{shared_link}'>{shared_link}</a></p>",
+    }
     if cc_email:
-        msg["Cc"] = cc_email
-        recipients = [recipient_email, cc_email]
-    else:
-        recipients = [recipient_email]
-    msg["Subject"] = "Shared Google Drive Link"
-    msg.attach(MIMEText(
-        f"Here is the shared link to the uploaded file: {shared_link}", "plain"
-    ))
+        params["cc"] = [cc_email]
+
     try:
-        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
-        server.login(sender_email, sender_password)
-        server.sendmail(sender_email, recipients, msg.as_string())
-        server.quit()
-        print("Email sent successfully")
-    except smtplib.SMTPException as e:
+        response = resend.Emails.send(params)
+        print(f"Email sent successfully. ID: {response['id']}")
+    except Exception as e:
         print(f"Error: Unable to send email - {e}")
+        raise
 
 
 def process_sticker_folders(input_dir: Path, output_dir: Path) -> None:
