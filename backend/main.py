@@ -165,7 +165,7 @@ def send_email(shared_link, recipient_email, cc_email=None):
     import resend
 
     resend.api_key = os.getenv("RESEND_API_KEY")
-    sender_email   = os.getenv("SENDER_EMAIL", "onboarding@resend.dev")
+    sender_email   = os.getenv("SENDER_EMAIL", "store@saikrishnaniyer.com")
 
     params = {
         "from":    sender_email,

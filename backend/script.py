@@ -12,11 +12,11 @@ if not token or not merchant:
     raise ValueError("TOKEN and MERCHANT environment variables must be set")
 
 merchant_url = "posterwaofficial.myshopify.com"
-api_session = shopify.Session(merchant_url, api_version, token)
-shopify.ShopifyResource.activate_session(api_session)
 
 
 def get_data(object_name):
+    api_session = shopify.Session(merchant_url, api_version, token)
+    shopify.ShopifyResource.activate_session(api_session)
     all_data = []
     attribute = getattr(shopify, object_name)
     try:
