@@ -2,6 +2,8 @@ import os
 import shutil
 import csv
 import tempfile
+import urllib.request
+
 import script
 import zipfile
 from datetime import datetime
@@ -9,10 +11,6 @@ from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
-import smtplib
-import io
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from dotenv import load_dotenv
 from sticker_processor import StickerProcessor
 import re
@@ -165,7 +163,7 @@ def send_email(shared_link, recipient_email, cc_email=None):
     import resend
 
     resend.api_key = os.getenv("RESEND_API_KEY")
-    sender_email   = os.getenv("SENDER_EMAIL", "store@saikrishnaniyer.com")
+    sender_email   = os.getenv("SENDER_EMAIL")
 
     params = {
         "from":    sender_email,
@@ -232,13 +230,14 @@ def run_script(source_folder_id: str, recipient_email: str, cc_email: str,
         orders = script.get_data("Order")
         unfulfilled_skus = []
         not_found = []
+        custom_count = 0
 
         for order in orders:
             if order.fulfillment_status is None:
                 for line_item in order.line_items:
                     if line_item.sku:
                         unfulfilled_skus.append(
-                            (order.id, line_item.sku, line_item.quantity)
+                            (order.id, line_item.sku, line_item.quantity, line_item.properties)
                         )
 
         log(f"Found {len(unfulfilled_skus)} unfulfilled SKU(s).")
@@ -252,7 +251,7 @@ def run_script(source_folder_id: str, recipient_email: str, cc_email: str,
         # ── Step 3: sort SKUs and download only what's needed ────────────────
         log("Sorting SKUs and downloading required artwork files…")
 
-        for order_id, sku, quantity in unfulfilled_skus:
+        for order_id, sku, quantity, properties in unfulfilled_skus:
             if sku is None:
                 continue
 
@@ -297,6 +296,11 @@ def run_script(source_folder_id: str, recipient_email: str, cc_email: str,
                 dest_file = os.path.join(subfolder_path, f"{filename}{matched_ext}")
                 log(f"  Downloading {filename}{matched_ext}…")
                 _download_file(service, file_id, dest_file)
+            elif len(properties) > 0:
+                custom_count += 1
+                dest_file = os.path.join(subfolder_path, f"{filename}_{custom_count}.jpg")
+                log(f"  Downloading {filename}.jpg…")
+                urllib.request.urlretrieve(properties[0].value, dest_file)
             else:
                 not_found.append((order_id, sku, quantity))
                 log(f"  ⚠ Not found in Drive: {sku}")

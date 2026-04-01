@@ -1,13 +1,7 @@
-import os
 import random
 
 from PIL import Image, ImageDraw
 from typing import List, Tuple
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.image import MIMEImage
-from email.mime.text import MIMEText
-import shopify
 from dataclasses import dataclass
 from pathlib import Path
 import math
