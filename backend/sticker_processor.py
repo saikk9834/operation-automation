@@ -1,4 +1,6 @@
 import os
+import random
+
 from PIL import Image, ImageDraw
 from typing import List, Tuple
 import smtplib
@@ -192,49 +194,127 @@ class StickerProcessor:
         draw.rectangle([canvas.width - mark_size, canvas.height - mark_size,
                         canvas.width, canvas.height], fill='black')
 
+    def _render_sheet(self,
+                      slot_sequence: List[Image.Image],
+                      canvas_size_px: Tuple[int, int],
+                      positions: List[Tuple[int, int]]) -> Image.Image:
+        """
+        Render a single sheet by placing each image in slot_sequence at the
+        corresponding position.  slot_sequence must have len == len(positions).
+        """
+        sheet = Image.new('RGBA', canvas_size_px, (0, 0, 0, 0))
+        for sticker, pos in zip(slot_sequence, positions):
+            sheet.paste(sticker, pos, sticker)
+        self.add_registration_marks(sheet)
+        return sheet
+
     def process_multi_sticker_order(self, sticker_files: List[Path], output_dir: Path) -> List[Path]:
         """
-        Creates as many sheets as needed to process every sticker,
-        doing so for EVERY canvas size defined in the class.
-        """
-        # 1. Pre-process all stickers once
-        sticker_images = [self.add_bleeding(Image.open(f)) for f in sticker_files]
-        generated_files = []
+        Produces sheets in paired sets: one 10×10 (25 slots) followed immediately
+        by one 10×8 (20 slots), giving 45 slots per pair.
 
-        # 2. Loop through each canvas size (10x8, 10x10, etc.)
+        Real stickers fill slots in order across the pair.  Any empty slots at the
+        end of a pair are filled by cycling back through the sticker list from
+        index 0, continuing the cycle across both sheets within the same pair
+        (but always restarting from index 0 at the start of each new pair).
+
+        Example – 36 stickers:
+          Pair 1 / 10×10: slots  1-25  → stickers 1-25  (real)
+          Pair 1 / 10×8:  slots 26-45  → stickers 26-36 (real) + 1-9 (repeat)
+
+        Example – 50 stickers:
+          Pair 1 / 10×10: slots  1-25  → stickers 1-25  (real)
+          Pair 1 / 10×8:  slots 26-45  → stickers 26-45 (real)
+          Pair 2 / 10×10: slots  1-25  → stickers 46-50 (real) + repeat 1-20
+          Pair 2 / 10×8:  slots 26-45  → repeat 21-40 (continuing within pair 2)
+        """
+        # ------------------------------------------------------------------
+        # 0. Pre-process every sticker image once (add bleed border)
+        # ------------------------------------------------------------------
+        sticker_images: List[Image.Image] = [
+            self.add_bleeding(Image.open(f)) for f in sticker_files
+        ]
+        random.shuffle(sticker_images)
+        total_stickers = len(sticker_images)
+
+        # ------------------------------------------------------------------
+        # 1. Resolve canvas pixel sizes for the fixed pair order: 10×10, 10×8
+        # ------------------------------------------------------------------
+        # Build a lookup: canvas_inches → canvas_size_px
+        size_lookup = {}
         for canvas_size_px in self.canvas_pixels:
             canvas_inches = (canvas_size_px[0] / self.dpi, canvas_size_px[1] / self.dpi)
-            size_label = f"{int(canvas_inches[0])}x{int(canvas_inches[1])}"
+            size_lookup[canvas_inches] = canvas_size_px
 
-            # 3. Calculate grid positions for THIS specific canvas size
+        # Pair order: 10×10 first, then 10×8
+        pair_order: List[Tuple[int, int]] = [(10, 10), (10, 8)]
+
+        # Pre-compute positions and slot counts for each canvas in the pair
+        pair_info = []
+        for canvas_inches in pair_order:
+            canvas_size_px = size_lookup[canvas_inches]
             positions = self.calculate_positions(canvas_size_px)
-            stickers_per_sheet = len(positions)
+            slots = len(positions)  # 25 for 10×10, 20 for 10×8
+            label = f"{int(canvas_inches[0])}x{int(canvas_inches[1])}"
+            pair_info.append({
+                "canvas_size_px": canvas_size_px,
+                "positions": positions,
+                "slots": slots,
+                "label": label,
+            })
 
-            # 4. Calculate how many sheets are needed to fit all stickers on this canvas size
-            total_stickers = len(sticker_images)
-            total_sheets = math.ceil(total_stickers / stickers_per_sheet)
+        slots_per_pair = sum(info["slots"] for info in pair_info)  # 45
 
-            # 5. Generate the sheets for this specific size
-            for sheet_num in range(total_sheets):
-                # Create the transparent canvas
-                sheet = Image.new('RGBA', canvas_size_px, (0, 0, 0, 0))
+        # ------------------------------------------------------------------
+        # 2. Determine how many pairs are needed
+        # ------------------------------------------------------------------
+        num_pairs = math.ceil(total_stickers / slots_per_pair)
 
-                # Slice the sticker list to get only the stickers for this sheet
-                start_idx = sheet_num * stickers_per_sheet
-                end_idx = start_idx + stickers_per_sheet
-                current_batch = sticker_images[start_idx:end_idx]
+        generated_files: List[Path] = []
 
-                # Place stickers in the calculated positions
-                for i, sticker in enumerate(current_batch):
-                    pos = positions[i]
-                    sheet.paste(sticker, pos, sticker)
+        # ------------------------------------------------------------------
+        # 3. Generate each pair
+        # ------------------------------------------------------------------
+        for pair_idx in range(num_pairs):
+            # Absolute index of the first real sticker slot in this pair
+            pair_start = pair_idx * slots_per_pair
 
-                # Add registration marks
-                self.add_registration_marks(sheet)
+            # The repeat cycle always restarts from sticker index 0 at the
+            # beginning of each new pair.
+            repeat_start_offset = 0  # position in sticker_images to cycle from
+            # We track how many repeat slots have been used so far within
+            # this pair so we can continue the cycle across both sheets.
+            repeat_used_in_pair = 0
 
-                # 6. Save with a filename that includes Size AND Sheet Number
-                # Example: order_10x8_sheet_1.png
-                filename = f"order_{size_label}_sheet_{sheet_num + 1}.png"
+            for info in pair_info:
+                canvas_size_px = info["canvas_size_px"]
+                positions = info["positions"]
+                slots = info["slots"]
+                label = info["label"]
+                sheet_num = pair_idx + 1  # 1-based pair number = sheet number
+
+                slot_sequence: List[Image.Image] = []
+                # absolute_slot_in_pair: position of this sheet's first slot within the pair
+                sheet_start_in_pair = sum(
+                    pi["slots"] for pi in pair_info[:pair_info.index(info)]
+                )
+
+                for slot_idx in range(slots):
+                    absolute_real_idx = pair_start + sheet_start_in_pair + slot_idx
+
+                    if absolute_real_idx < total_stickers:
+                        # We still have real (unique) stickers to place
+                        slot_sequence.append(sticker_images[absolute_real_idx])
+                    else:
+                        # No more real stickers – fill with repeats, cycling
+                        # from index 0, continuing across sheets within the pair
+                        repeat_idx = repeat_used_in_pair % total_stickers
+                        slot_sequence.append(sticker_images[repeat_idx])
+                        repeat_used_in_pair += 1
+
+                # Render and save
+                sheet = self._render_sheet(slot_sequence, canvas_size_px, positions)
+                filename = f"order_{label}_sheet_{sheet_num}.png"
                 output_path = output_dir / filename
                 sheet.save(output_path)
                 generated_files.append(output_path)
